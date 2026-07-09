@@ -1,15 +1,16 @@
-import { Typography, Box } from '@mui/material';
+import { Box, Button } from '@mui/material';
+import { Add } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
+import PageHeader from '../components/common/PageHeader';
 import InteractionList from '../components/interactions/InteractionList';
 
 export default function InteractionsPage() {
+  const navigate = useNavigate();
   return (
     <Box>
-      <Typography variant="h4" fontWeight={700} mb={1}>
-        Interaction History
-      </Typography>
-      <Typography variant="body1" color="text.secondary" mb={3}>
-        View and manage all logged HCP interactions
-      </Typography>
+      <PageHeader title="Interaction History"
+        subtitle="Search and review all recorded healthcare professional engagements"
+        action={<Button variant="contained" startIcon={<Add />} onClick={() => navigate('/log')}>Log interaction</Button>} />
       <InteractionList />
     </Box>
   );

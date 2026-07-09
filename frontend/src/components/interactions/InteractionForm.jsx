@@ -1,179 +1,103 @@
+import { useEffect } from 'react';
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  Grid,
-  TextField,
-  MenuItem,
-  Button,
-  Box,
-  Divider,
+  Autocomplete, Box, Button, Card, CardContent, CardHeader, Chip, Divider, Grid,
+  MenuItem, Stack, TextField, Typography,
 } from '@mui/material';
-import { Save as SaveIcon, Refresh as ResetIcon } from '@mui/icons-material';
+import { AutoAwesome, RestartAlt, SaveOutlined } from '@mui/icons-material';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchDoctors } from '../../store/doctorSlice';
 import useInteractions from '../../hooks/useInteractions';
 
-const INTERACTION_TYPES = ['In-Person', 'Virtual', 'Phone', 'Conference'];
-const SENTIMENTS = ['Positive', 'Neutral', 'Negative'];
+const interactionTypes = ['In-Person', 'Virtual', 'Phone', 'Conference'];
+const sentiments = ['Positive', 'Neutral', 'Negative'];
 
 export default function InteractionForm() {
+  const dispatch = useDispatch();
+  const doctors = useSelector((state) => state.doctors.items);
   const { form, saving, handleFieldChange, handleSave, handleReset } = useInteractions();
-
+  useEffect(() => { if (!doctors.length) dispatch(fetchDoctors()); }, [dispatch, doctors.length]);
+  const field = (name) => ({
+    value: form[name] || '',
+    onChange: (event) => handleFieldChange(name, event.target.value),
+  });
   return (
     <Card>
-      <CardHeader
-        title="Traditional Form"
-        subheader="Log HCP interaction manually or review AI-extracted data"
-        titleTypographyProps={{ fontWeight: 600 }}
-      />
+      <CardHeader title="Traditional Form" subheader="Required fields are marked with an asterisk"
+        action={form.entry_source === 'ai_assisted' && (
+          <Chip icon={<AutoAwesome />} label="AI populated" color="primary" size="small" />
+        )} />
       <Divider />
       <CardContent>
-        <Grid container spacing={2.5}>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              required
-              label="Doctor Name"
-              value={form.doctor_name}
-              onChange={(e) => handleFieldChange('doctor_name', e.target.value)}
-              placeholder="Dr. Rajesh Sharma"
-            />
+        <Grid container spacing={2.25}>
+          <Grid item xs={12}>
+            <Autocomplete freeSolo options={doctors} getOptionLabel={(option) =>
+              typeof option === 'string' ? option : option.name}
+              value={doctors.find((d) => d.id === form.doctor_id) || form.doctor_name || null}
+              onChange={(_, value) => {
+                handleFieldChange('doctor_id', typeof value === 'object' ? value?.id || null : null);
+                handleFieldChange('doctor_name', typeof value === 'object' ? value?.name || '' : value || '');
+              }}
+              onInputChange={(_, value, reason) => {
+                if (reason === 'input') { handleFieldChange('doctor_id', null); handleFieldChange('doctor_name', value); }
+              }}
+              renderInput={(params) => <TextField {...params} required label="Doctor Name"
+                placeholder="Search or enter an HCP" />} />
           </Grid>
           <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              select
-              label="Interaction Type"
-              value={form.interaction_type}
-              onChange={(e) => handleFieldChange('interaction_type', e.target.value)}
-            >
-              {INTERACTION_TYPES.map((type) => (
-                <MenuItem key={type} value={type}>{type}</MenuItem>
-              ))}
+            <TextField select fullWidth required label="Interaction Type" {...field('interaction_type')}>
+              {interactionTypes.map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}
             </TextField>
           </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              type="date"
-              label="Date"
-              value={form.date}
-              onChange={(e) => handleFieldChange('date', e.target.value)}
-              InputLabelProps={{ shrink: true }}
-            />
+          <Grid item xs={12} sm={3}>
+            <TextField fullWidth required type="date" label="Date" InputLabelProps={{ shrink: true }} {...field('date')} />
           </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              type="time"
-              label="Time"
-              value={form.time}
-              onChange={(e) => handleFieldChange('time', e.target.value)}
-              InputLabelProps={{ shrink: true }}
-            />
+          <Grid item xs={12} sm={3}>
+            <TextField fullWidth type="time" label="Time" InputLabelProps={{ shrink: true }} {...field('time')} />
           </Grid>
           <Grid item xs={12}>
-            <TextField
-              fullWidth
-              label="Attendees"
-              value={form.attendees}
-              onChange={(e) => handleFieldChange('attendees', e.target.value)}
-              placeholder="Dr. Sharma, Medical Representative"
-            />
+            <TextField fullWidth label="Attendees" placeholder="Names and roles of attendees" {...field('attendees')} />
           </Grid>
           <Grid item xs={12}>
-            <TextField
-              fullWidth
-              multiline
-              rows={2}
-              label="Topics Discussed"
-              value={form.topics}
-              onChange={(e) => handleFieldChange('topics', e.target.value)}
-              placeholder="Product efficacy, clinical data, treatment guidelines"
-            />
+            <TextField fullWidth multiline minRows={2} label="Topics Discussed"
+              placeholder="Products, evidence, treatment needs…" {...field('topics')} />
           </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              multiline
-              rows={2}
-              label="Materials Shared"
-              value={form.materials}
-              onChange={(e) => handleFieldChange('materials', e.target.value)}
-              placeholder="Brochures, clinical trial data"
-            />
+          <Grid item xs={12} md={6}>
+            <TextField fullWidth multiline minRows={2} label="Materials Shared"
+              placeholder="Brochures, studies, digital assets…" {...field('materials')} />
           </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              multiline
-              rows={2}
-              label="Samples Distributed"
-              value={form.samples}
-              onChange={(e) => handleFieldChange('samples', e.target.value)}
-              placeholder="Product X sample pack (10 units)"
-            />
+          <Grid item xs={12} md={6}>
+            <TextField fullWidth multiline minRows={2} label="Samples Distributed"
+              placeholder="Product and quantity" {...field('samples')} />
           </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              select
-              label="Observed Sentiment"
-              value={form.sentiment}
-              onChange={(e) => handleFieldChange('sentiment', e.target.value)}
-            >
-              {SENTIMENTS.map((s) => (
-                <MenuItem key={s} value={s}>{s}</MenuItem>
-              ))}
+          <Grid item xs={12} sm={5}>
+            <TextField select fullWidth label="Sentiment" {...field('sentiment')}>
+              {sentiments.map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}
             </TextField>
           </Grid>
           <Grid item xs={12}>
-            <TextField
-              fullWidth
-              multiline
-              rows={2}
-              label="Outcomes"
-              value={form.outcomes}
-              onChange={(e) => handleFieldChange('outcomes', e.target.value)}
-              placeholder="Doctor expressed interest in prescribing"
-            />
+            <TextField fullWidth multiline minRows={2} label="Outcome"
+              placeholder="Interest, objections, agreements…" {...field('outcomes')} />
           </Grid>
           <Grid item xs={12}>
-            <TextField
-              fullWidth
-              multiline
-              rows={2}
-              label="Follow-up Actions"
-              value={form.followup}
-              onChange={(e) => handleFieldChange('followup', e.target.value)}
-              placeholder="Schedule follow-up next week with RWE data"
-            />
+            <TextField fullWidth multiline minRows={2} label="Follow-up"
+              placeholder="Next action, owner, and timing" {...field('followup')} />
           </Grid>
           <Grid item xs={12}>
-            <TextField
-              fullWidth
-              multiline
-              rows={2}
-              label="Summary"
-              value={form.summary}
-              onChange={(e) => handleFieldChange('summary', e.target.value)}
-              placeholder="Brief meeting summary"
-            />
+            <TextField fullWidth required multiline minRows={3} label="Interaction Summary"
+              placeholder="Concise, factual summary of the interaction" {...field('summary')} />
           </Grid>
         </Grid>
-        <Box display="flex" gap={2} mt={3}>
-          <Button
-            variant="contained"
-            startIcon={<SaveIcon />}
-            onClick={handleSave}
-            disabled={saving}
-            size="large"
-          >
-            {saving ? 'Saving...' : 'Save Interaction'}
-          </Button>
-          <Button variant="outlined" startIcon={<ResetIcon />} onClick={handleReset}>
-            Reset Form
-          </Button>
-        </Box>
+        <Divider sx={{ my: 3 }} />
+        <Stack direction={{ xs: 'column-reverse', sm: 'row' }} justifyContent="space-between" gap={1.5}>
+          <Button color="inherit" startIcon={<RestartAlt />} onClick={handleReset}>Reset form</Button>
+          <Box>
+            <Typography variant="caption" color="text.secondary" mr={2}
+              sx={{ display: { xs: 'none', md: 'inline' } }}>Review all AI-populated fields before saving.</Typography>
+            <Button variant="contained" startIcon={<SaveOutlined />} onClick={handleSave} disabled={saving}>
+              {saving ? 'Saving…' : 'Save interaction'}
+            </Button>
+          </Box>
+        </Stack>
       </CardContent>
     </Card>
   );

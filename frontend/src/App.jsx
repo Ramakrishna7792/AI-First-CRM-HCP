@@ -6,6 +6,7 @@ import DashboardPage from './pages/DashboardPage';
 import InteractionsPage from './pages/InteractionsPage';
 import LogInteractionPage from './pages/LogInteractionPage';
 import LoginPage from './pages/LoginPage';
+import DoctorDetailsPage from './pages/DoctorDetailsPage';
 import theme from './theme';
 
 function ProtectedLayout() {
@@ -24,6 +25,7 @@ export default function App() {
             <Route path="/" element={<DashboardPage />} />
             <Route path="/log" element={<LogInteractionPage />} />
             <Route path="/interactions" element={<InteractionsPage />} />
+            <Route path="/doctors/:doctorId" element={<DoctorDetailsPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

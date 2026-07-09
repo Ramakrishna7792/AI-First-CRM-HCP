@@ -1,4 +1,8 @@
-from datetime import date, datetime, time
+from __future__ import annotations
+
+from datetime import date as DateType
+from datetime import datetime
+from datetime import time as TimeType
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -9,8 +13,8 @@ class InteractionDraft(BaseModel):
     doctor_id: int | None = None
     doctor_name: str | None = None
     interaction_type: str | None = None
-    date: date | None = None
-    time: time | None = None
+    date: DateType | None = None
+    time: TimeType | None = None
     attendees: str | None = None
     topics: str | None = None
     materials: str | None = None
@@ -24,7 +28,7 @@ class InteractionDraft(BaseModel):
 class InteractionCreate(InteractionDraft):
     doctor_id: int | None = None
     doctor_name: str | None = None
-    date: date
+    date: DateType
     summary: str = Field(min_length=3)
     entry_source: str = Field(default="form", pattern="^(form|ai_assisted)$")
 
