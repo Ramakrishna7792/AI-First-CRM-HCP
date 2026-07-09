@@ -1,0 +1,29 @@
+# Secrets and local configuration
+.env
+.env.local
+backend/.env
+frontend/.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+.venv/
+venv/
+backend/venv/
+*.db
+
+# JavaScript
+node_modules/
+frontend/node_modules/
+frontend/dist/
+npm-debug.log*
+
+# Editors and operating systems
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
