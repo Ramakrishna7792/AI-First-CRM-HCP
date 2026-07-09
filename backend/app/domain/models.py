@@ -1,6 +1,8 @@
 from datetime import date, datetime, time
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, JSON, String, Text, Time, func
+from sqlalchemy import (
+    Boolean, Column, Date, DateTime, ForeignKey, Integer, JSON, String, Table, Text, Time, func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -13,6 +15,14 @@ class TimestampMixin:
     )
 
 
+interaction_products = Table(
+    "interaction_products",
+    Base.metadata,
+    Column("interaction_id", ForeignKey("interactions.id", ondelete="CASCADE"), primary_key=True),
+    Column("product_id", ForeignKey("products.id", ondelete="CASCADE"), primary_key=True),
+)
+
+
 class User(Base, TimestampMixin):
     __tablename__ = "users"
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -21,6 +31,7 @@ class User(Base, TimestampMixin):
     hashed_password: Mapped[str] = mapped_column(String(255))
     role: Mapped[str] = mapped_column(String(40), default="representative")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    interactions: Mapped[list["Interaction"]] = relationship(back_populates="representative")
 
 
 class Doctor(Base, TimestampMixin):
@@ -30,16 +41,30 @@ class Doctor(Base, TimestampMixin):
     specialization: Mapped[str | None] = mapped_column(String(255))
     hospital: Mapped[str | None] = mapped_column(String(255))
     city: Mapped[str | None] = mapped_column(String(100), index=True)
-    interactions: Mapped[list["Interaction"]] = relationship(back_populates="doctor")
+    interactions: Mapped[list["Interaction"]] = relationship(
+        back_populates="doctor", cascade="all, delete-orphan"
+    )
+
+
+class Product(Base, TimestampMixin):
+    __tablename__ = "products"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    product_name: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    category: Mapped[str | None] = mapped_column(String(100), index=True)
+    description: Mapped[str | None] = mapped_column(Text)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    interactions: Mapped[list["Interaction"]] = relationship(
+        secondary=interaction_products, back_populates="products"
+    )
 
 
 class Interaction(Base, TimestampMixin):
     __tablename__ = "interactions"
     id: Mapped[int] = mapped_column(primary_key=True)
-    doctor_id: Mapped[int] = mapped_column(ForeignKey("doctors.id"), index=True)
+    doctor_id: Mapped[int] = mapped_column(ForeignKey("doctors.id", ondelete="CASCADE"), index=True)
     representative_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     interaction_type: Mapped[str] = mapped_column(String(100), default="In-Person")
-    date: Mapped[date] = mapped_column(Date)
+    date: Mapped[date] = mapped_column(Date, index=True)
     time: Mapped[time | None] = mapped_column(Time)
     attendees: Mapped[str | None] = mapped_column(Text)
     topics: Mapped[str | None] = mapped_column(Text)
@@ -51,6 +76,10 @@ class Interaction(Base, TimestampMixin):
     summary: Mapped[str] = mapped_column(Text)
     entry_source: Mapped[str] = mapped_column(String(30), default="form")
     doctor: Mapped[Doctor] = relationship(back_populates="interactions")
+    representative: Mapped[User] = relationship(back_populates="interactions")
+    products: Mapped[list[Product]] = relationship(
+        secondary=interaction_products, back_populates="interactions"
+    )
 
 
 class ChatSession(Base, TimestampMixin):
@@ -67,7 +96,7 @@ class ChatSession(Base, TimestampMixin):
 class ChatMessage(Base):
     __tablename__ = "chat_messages"
     id: Mapped[int] = mapped_column(primary_key=True)
-    session_id: Mapped[int] = mapped_column(ForeignKey("chat_sessions.id"), index=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("chat_sessions.id", ondelete="CASCADE"), index=True)
     role: Mapped[str] = mapped_column(String(20))
     content: Mapped[str] = mapped_column(Text)
     structured_payload: Mapped[dict | None] = mapped_column(JSON)
