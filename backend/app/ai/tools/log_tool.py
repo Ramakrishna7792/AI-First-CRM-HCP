@@ -10,8 +10,6 @@ Saving is performed by InteractionService via the normal POST /interactions API.
 
 import logging
 
-from app.ai.graph import run_interaction_graph
-
 logger = logging.getLogger(__name__)
 
 
@@ -40,6 +38,7 @@ class LogTool:
             Keys: merged_draft, missing_fields, reply, warnings, intent.
         """
         logger.debug("LogTool.run message_length=%d", len(message))
+        from app.ai.graph import run_interaction_graph  # lazy: avoids langgraph at module load
         result = run_interaction_graph(message, existing_draft)
         result["intent"] = "log"
         return result

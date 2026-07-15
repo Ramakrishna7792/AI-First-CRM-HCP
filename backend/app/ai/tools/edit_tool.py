@@ -11,8 +11,6 @@ merge logic is needed here.
 
 import logging
 
-from app.ai.graph import run_interaction_graph
-
 logger = logging.getLogger(__name__)
 
 
@@ -44,6 +42,7 @@ class EditTool:
             "EditTool.run existing_draft_keys=%s",
             list(existing_draft.keys()),
         )
+        from app.ai.graph import run_interaction_graph  # lazy: avoids langgraph at module load
         result = run_interaction_graph(message, existing_draft)
         result["intent"] = "edit"
 

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.ai.graph import run_interaction_graph
+from app.ai.agent import HCPCRMAgent
 from app.api.dependencies import get_current_user
 from app.db.session import get_db
 from app.domain.models import User
@@ -27,13 +27,26 @@ def send_message(
     session = repo.owned(session_id, user.id)
     if not session:
         raise HTTPException(404, "Chat session not found")
+
     repo.message(session.id, "user", data.message)
-    result = run_interaction_graph(data.message, session.current_draft)
-    session.current_draft = result["merged_draft"]
-    repo.message(session.id, "assistant", result["reply"], result["merged_draft"])
+
+    # Route through HCPCRMAgent — detects intent and delegates to the
+    # appropriate AI tool. Falls back gracefully if Groq is unavailable.
+    agent = HCPCRMAgent(db=db)
+    result = agent.run(
+        message=data.message,
+        user_id=user.id,
+        existing_draft=session.current_draft,
+    )
+
+    session.current_draft = result.get("merged_draft", session.current_draft)
+    repo.message(session.id, "assistant", result["reply"], result.get("merged_draft"))
     db.commit()
+
     return ChatResponse(
-        session_id=session.id, reply=result["reply"],
-        interaction_draft=InteractionDraft.model_validate(result["merged_draft"]),
-        missing_fields=result["missing_fields"], validation_warnings=result.get("warnings", []),
+        session_id=session.id,
+        reply=result["reply"],
+        interaction_draft=InteractionDraft.model_validate(result.get("merged_draft", {})),
+        missing_fields=result.get("missing_fields", []),
+        validation_warnings=result.get("warnings", []),
     )
