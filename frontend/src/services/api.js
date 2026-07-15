@@ -29,10 +29,15 @@ export const doctorApi = {
 };
 export const interactionApi = {
   getAll: () => api.get('/interactions'),
+  getById: (id) => api.get(`/interactions/${id}`),
   create: (data) => api.post('/interactions', data),
+  update: (id, data) => api.patch(`/interactions/${id}`, data),
 };
 export const chatApi = {
   createSession: () => api.post('/chat/sessions'),
   send: (sessionId, message) => api.post(`/chat/sessions/${sessionId}/messages`, { message }),
+};
+export const analyticsApi = {
+  getSummary: () => api.get('/analytics/summary'),
 };
 export default api;

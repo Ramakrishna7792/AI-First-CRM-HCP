@@ -1,10 +1,11 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Box, Button, Card, CardContent, Grid, Stack, Typography } from '@mui/material';
 import { Add, EventNote, People, SentimentSatisfied, TrendingUp } from '@mui/icons-material';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { fetchInteractions } from '../store/interactionSlice';
 import { fetchDoctors } from '../store/doctorSlice';
+import { analyticsApi } from '../services/api';
 import PageHeader from '../components/common/PageHeader';
 import SummaryCard from '../components/common/SummaryCard';
 import InteractionCard from '../components/interactions/InteractionCard';
@@ -17,15 +18,28 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const interactions = useSelector((state) => state.interactions);
   const doctors = useSelector((state) => state.doctors);
-  useEffect(() => { dispatch(fetchInteractions()); dispatch(fetchDoctors()); }, [dispatch]);
-  const positive = interactions.items.filter((item) => item.sentiment === 'Positive').length;
-  const rate = interactions.items.length ? `${Math.round(positive / interactions.items.length * 100)}%` : '0%';
+  const [analytics, setAnalytics] = useState(null);
+
+  useEffect(() => {
+    dispatch(fetchInteractions());
+    dispatch(fetchDoctors());
+    analyticsApi.getSummary()
+      .then((res) => setAnalytics(res.data))
+      .catch(() => setAnalytics(null));
+  }, [dispatch]);
+
+  // Fall back to client-side calculation if analytics API is unavailable.
+  const total = analytics?.total_interactions ?? interactions.items.length;
+  const positive = analytics?.positive_sentiment
+    ?? interactions.items.filter((item) => item.sentiment === 'Positive').length;
+  const rate = total ? `${Math.round((positive / total) * 100)}%` : '0%';
+
   return (
     <Box>
       <PageHeader title="Dashboard" subtitle="Your HCP engagement performance at a glance"
         action={<Button variant="contained" startIcon={<Add />} onClick={() => navigate('/log')}>Log interaction</Button>} />
       <Grid container spacing={2.5} mb={3.5}>
-        <Grid item xs={12} sm={6} lg={3}><SummaryCard label="Total interactions" value={interactions.items.length}
+        <Grid item xs={12} sm={6} lg={3}><SummaryCard label="Total interactions" value={total}
           helper="All recorded visits" icon={<EventNote />} /></Grid>
         <Grid item xs={12} sm={6} lg={3}><SummaryCard label="HCP network" value={doctors.items.length}
           helper="Doctors in your workspace" icon={<People />} color="secondary" /></Grid>

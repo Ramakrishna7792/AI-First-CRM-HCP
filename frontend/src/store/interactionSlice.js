@@ -14,7 +14,7 @@ const freshForm = () => ({
   doctor_id: null, doctor_name: '', interaction_type: 'In-Person',
   date: new Date().toISOString().slice(0, 10), time: '', attendees: '', topics: '',
   materials: '', samples: '', sentiment: 'Neutral', outcomes: '', followup: '',
-  summary: '', entry_source: 'form',
+  summary: '', entry_source: 'form', product_ids: [],
 });
 const interactionSlice = createSlice({
   name: 'interactions',
