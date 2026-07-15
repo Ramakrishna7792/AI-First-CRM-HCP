@@ -12,17 +12,29 @@ The actual database work is handled by the LangGraph tools.
 """
 
 import json
-
-from langchain_groq import ChatGroq
+import logging
 
 from app.ai.prompts import SYSTEM_PROMPT
+from app.ai.state import InteractionGraphState
 from app.core.config import settings
 
-llm = ChatGroq(
-    api_key=settings.groq_api_key,
-    model=settings.groq_model,
-    temperature=0,
-)
+logger = logging.getLogger(__name__)
+
+# ChatGroq is instantiated lazily to avoid crash when GROQ_API_KEY is absent.
+_llm = None
+
+
+def _get_llm():
+    """Return a cached ChatGroq instance, creating it on first call."""
+    global _llm
+    if _llm is None:
+        from langchain_groq import ChatGroq
+        _llm = ChatGroq(
+            api_key=settings.groq_api_key,
+            model=settings.groq_model,
+            temperature=0,
+        )
+    return _llm
 
 
 # ----------------------------------------------------------
@@ -30,10 +42,12 @@ llm = ChatGroq(
 # ----------------------------------------------------------
 
 
-def detect_intent(state):
+def detect_intent(state: InteractionGraphState) -> dict:
+    if not settings.groq_api_key:
+        logger.debug("detect_intent: no API key, defaulting to 'log'")
+        return {**state, "intent": "log"}
 
-    prompt = f"""
-You are an AI CRM assistant.
+    prompt = f"""You are an AI CRM assistant.
 
 Determine the user's intent.
 
@@ -54,25 +68,14 @@ User Message
 {state["message"]}
 """
 
-    response = llm.invoke(prompt)
-
+    response = _get_llm().invoke(prompt)
     intent = response.content.strip().lower()
 
-    allowed = {
-        "log",
-        "edit",
-        "summary",
-        "followup",
-        "compliance",
-    }
-
+    allowed = {"log", "edit", "summary", "followup", "compliance"}
     if intent not in allowed:
         intent = "log"
 
-    return {
-        **state,
-        "intent": intent,
-    }
+    return {**state, "intent": intent}
 
 
 # ----------------------------------------------------------
@@ -80,26 +83,20 @@ User Message
 # ----------------------------------------------------------
 
 
-def extract_entities(state):
+def extract_entities(state: InteractionGraphState) -> dict:
+    if not settings.groq_api_key:
+        logger.debug("extract_entities: no API key, returning empty extracted")
+        return {**state, "extracted": {}}
 
-    prompt = SYSTEM_PROMPT.format(
-        message=state["message"]
-    )
-
-    response = llm.invoke(prompt)
+    prompt = SYSTEM_PROMPT.format(message=state["message"])
+    response = _get_llm().invoke(prompt)
 
     try:
-
         extracted = json.loads(response.content)
-
     except Exception:
-
         extracted = {}
 
-    return {
-        **state,
-        "extracted": extracted,
-    }
+    return {**state, "extracted": extracted}
 
 
 # ----------------------------------------------------------
@@ -113,31 +110,13 @@ REQUIRED_FIELDS = [
 ]
 
 
-def validate_interaction(state):
-
+def validate_interaction(state: InteractionGraphState) -> dict:
     data = state.get("merged_draft") or state.get("extracted") or {}
 
-    missing = []
+    missing = [field for field in REQUIRED_FIELDS if not data.get(field)]
+    warnings = ["Some required fields are missing."] if missing else []
 
-    for field in REQUIRED_FIELDS:
-
-        if not data.get(field):
-
-            missing.append(field)
-
-    warnings = []
-
-    if missing:
-
-        warnings.append(
-            "Some required fields are missing."
-        )
-
-    return {
-        **state,
-        "missing_fields": missing,
-        "warnings": warnings,
-    }
+    return {**state, "missing_fields": missing, "warnings": warnings}
 
 
 # ----------------------------------------------------------
@@ -145,27 +124,16 @@ def validate_interaction(state):
 # ----------------------------------------------------------
 
 
-def build_response(state):
-
+def build_response(state: InteractionGraphState) -> dict:
     missing = state.get("missing_fields", [])
 
     if missing:
-
         reply = (
             "Interaction analyzed successfully.\n\n"
             "Please complete the missing fields:\n\n"
-            + "\n".join(
-                f"• {item}" for item in missing
-            )
+            + "\n".join(f"• {item}" for item in missing)
         )
-
     else:
+        reply = "Interaction processed successfully."
 
-        reply = (
-            "Interaction processed successfully."
-        )
-
-    return {
-        **state,
-        "reply": reply,
-    }
+    return {**state, "reply": reply}
